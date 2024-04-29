@@ -12,6 +12,7 @@
 # Copyright (C) 2020~ https://github.com/openwrt/openwrt
 # Copyright (C) 2020~ https://github.com/coolsnowwolf/lede
 # Copyright (C) 2020~ https://github.com/immortalwrt/immortalwrt
+# Copyright (C) 2023~ https://github.com/istoreos/istoreos
 # Copyright (C) 2020~ https://github.com/unifreq/openwrt_packit
 # Copyright (C) 2021~ https://github.com/ophub/amlogic-s9xxx-armbian/blob/main/CONTRIBUTORS.md
 # Copyright (C) 2020~ https://github.com/ophub/amlogic-s9xxx-openwrt
@@ -171,7 +172,7 @@ init_var() {
     echo -e "${STEPS} Start Initializing Variables..."
 
     # If it is followed by [ : ], it means that the option requires a parameter value
-    get_all_ver="$(getopt "b:r:u:k:a:s:n:" "${@}")"
+    get_all_ver="$(getopt "b:r:u:k:a:s:n:i:" "${@}")"
 
     while [[ -n "${1}" ]]; do
         case "${1}" in
@@ -236,6 +237,14 @@ init_var() {
                 shift
             else
                 error_msg "Invalid -n parameter [ ${2} ]!"
+            fi
+            ;;
+        -i | --Image_name)
+            if [[ -n "${2}" ]]; then
+                image_name="${2}"
+                shift
+            else
+                error_msg "Invalid -g parameter [ ${2} ]!"
             fi
             ;;
         *)
@@ -347,6 +356,7 @@ find_openwrt() {
             official) OPENWRT_SOURCECODE="github.com/openwrt/openwrt" ;;
             lede) OPENWRT_SOURCECODE="github.com/coolsnowwolf/lede" ;;
             immortalwrt) OPENWRT_SOURCECODE="github.com/immortalwrt/immortalwrt" ;;
+            istoreos) OPENWRT_SOURCECODE="github.com/istoreos/istoreos" ;;
             *) OPENWRT_SOURCECODE="unknown" ;;
             esac
 
@@ -428,6 +438,10 @@ download_depends() {
     cp -af --no-preserve=ownership ${git_path}/luci-app-amlogic/root/usr/share/amlogic ${common_files}/usr/share/amlogic
     [[ "${?}" -eq "0" ]] && echo -e "${INFO} app/share download completed." || error_msg "app/share download failed."
     chmod +x ${common_files}/usr/share/amlogic/*
+
+    # Modify EMMC root size
+    sed -i -e '/ROOT1=/c\ROOT1=\"512\"' -e '/ROOT2=/c\ROOT2=\"512\"' ${common_files}/usr/sbin/openwrt-install-amlogic
+
     # Delete temporary files
     rm -rf ${git_path}
 }
@@ -474,12 +488,8 @@ query_kernel() {
                 kernel_verpatch="$(echo ${kernel_var} | awk -F '.' '{print $1"."$2}')"
 
                 # Query the latest kernel version
-                latest_version="$(
-                    curl -fsSL \
-                        ${kernel_api}/releases/expanded_assets/kernel_${kd} |
-                        grep -oE "${kernel_verpatch}.[0-9]+.tar.gz" | sed 's/.tar.gz//' |
-                        sort -urV | head -n 1
-                )"
+                latest_version="$(curl -fsSL ${kernel_api}/releases/expanded_assets/kernel_${kd} | grep -oE "${kernel_verpatch}.[0-9]+.tar.gz" | sed 's/.tar.gz//' | sort -urV | head -n 1)"
+                [[ ${kernel_repo} == *ffuqiangg* ]] && latest_version="$(curl -fsSL ${kernel_api}/releases | grep -oE "kernel_${kernel_verpatch}.[0-9]+" | sed 's/kernel_//' | sort -urV | head -n 1)"
 
                 if [[ "${?}" -eq "0" && -n "${latest_version}" ]]; then
                     tmp_arr_kernels[${i}]="${latest_version}"
@@ -565,6 +575,7 @@ download_kernel() {
             for kernel_var in "${down_kernel_list[@]}"; do
                 if [[ ! -d "${kernel_path}/${kd}/${kernel_var}" ]]; then
                     kernel_down_from="https://github.com/${kernel_repo}/releases/download/kernel_${kd}/${kernel_var}.tar.gz"
+                    [[ "${kernel_repo}" == *ffuqiangg* ]] && kernel_down_from="https://github.com/${kernel_repo}/releases/download/kernel_${kernel_var}/${kernel_var}.tar.gz"
                     echo -e "${INFO} (${x}.${i}) [ ${k} - ${kernel_var} ] Kernel download from [ ${kernel_down_from} ]"
 
                     [[ -d "${kernel_path}/${kd}" ]] || mkdir -p ${kernel_path}/${kd}
@@ -658,7 +669,7 @@ make_image() {
 
     # Set OpenWrt filename
     [[ -d "${out_path}" ]] || mkdir -p ${out_path}
-    openwrt_filename="openwrt${source_codename}_${PLATFORM}_${board}_k${kernel}_$(date +"%Y.%m.%d").img"
+    openwrt_filename="${image_name}.img"
     build_image_file="${out_path}/${openwrt_filename}"
     rm -f ${build_image_file}
 
@@ -1056,13 +1067,6 @@ EOF
 
     # Add firmware version information to the terminal page
     [[ -n "${builder_name}" ]] && builder_display="Builder Name: ${builder_name} | " || builder_display=""
-    [[ -f "etc/banner" ]] && {
-        echo " Install OpenWrt: System → Amlogic Service → Install OpenWrt" >>etc/banner
-        echo " Update  OpenWrt: System → Amlogic Service → Online  Update" >>etc/banner
-        echo " Board: ${board} | OpenWrt Kernel: ${kernel_name}" >>etc/banner
-        echo " ${builder_display}Production Date: $(date +%Y-%m-%d)" >>etc/banner
-        echo "───────────────────────────────────────────────────────────────────────" >>etc/banner
-    }
 
     # Add firmware information
     echo "PLATFORM='${PLATFORM}'" >>${op_release}
@@ -1114,7 +1118,7 @@ clean_tmp() {
 
     cd ${out_path}
     # Compress the OpenWrt image file
-    pigz -qf ${openwrt_filename} || gzip -qf ${openwrt_filename}
+    zip ${openwrt_filename%.*}.zip ${openwrt_filename}
 
     cd ${current_path}
     # Clear temporary files directory
