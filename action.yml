@@ -38,6 +38,10 @@ inputs:
     description: "Set OpenWrt builder signature."
     required: false
     default: ""
+  image_name:
+    description: "Set the image name."
+    required: false
+    default: ""
 
 runs:
   using: "composite"
@@ -80,6 +84,7 @@ runs:
         [[ -n "${{ inputs.auto_kernel }}" ]] && make_command="${make_command} -a ${{ inputs.auto_kernel }}"
         [[ -n "${{ inputs.openwrt_size }}" ]] && make_command="${make_command} -s ${{ inputs.openwrt_size }}"
         [[ -n "${{ inputs.builder_name }}" ]] && make_command="${make_command} -n ${{ inputs.builder_name }}"
+        [[ -n "${{ inputs.image_name }}" ]] && make_command="${make_command} -i ${{ inputs.image_name }}"
         sudo ./remake ${make_command}
 
         cd ${GITHUB_ACTION_PATH}/${openwrt_outpath}
