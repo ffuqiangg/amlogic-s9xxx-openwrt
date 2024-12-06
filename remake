@@ -1111,7 +1111,7 @@ EOF
     echo "PACKAGED_DATE='$(date +%Y-%m-%d)'" >>${op_release}
     # Creating an Alias
     ln -sf ${op_release#*/} ${ophub_release_file}
-    rm -f opt/docker && ln -sf mnt/sda4/docker/ opt/docker
+    rm -f opt/docker && ln -sf /mnt/sda4/docker/ opt/docker
 
     # Remove the menus that are not applicable in the model
     install_menu=$(echo "${model_txt}" | awk -F'/' '{print $(NF-1)"/"$NF}')
