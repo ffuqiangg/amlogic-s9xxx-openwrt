@@ -372,18 +372,15 @@ find_openwrt() {
     (cd ${temp_dir} && tar -mxzf "${openwrt_path}/${openwrt_default_file}" "./${source_release_file}" 2>/dev/null)
     # Find custom DISTRIB_SOURCECODE, such as [ official/lede ]
     [[ -f "${temp_dir}/${source_release_file}" ]] && {
-        source_codename="$(cat ${temp_dir}/${source_release_file} 2>/dev/null | grep -oE "^DISTRIB_SOURCECODE=.*" | head -n 1 | cut -d"'" -f2)"
+        source_codename="$(cat ${temp_dir}/${source_release_file} 2>/dev/null | grep -oE "^DISTRIB_ID=.*" | head -n 1 | cut -d"'" -f2)"
         [[ -n "${source_codename}" ]] && {
             # Record OpenWrt source codes repository
-            case "${source_codename}" in
-            official) OPENWRT_SOURCECODE="github.com/openwrt/openwrt" ;;
+            case "${source_codename,,}" in
+            openwrt) OPENWRT_SOURCECODE="github.com/openwrt/openwrt" ;;
             lede) OPENWRT_SOURCECODE="github.com/coolsnowwolf/lede" ;;
             immortalwrt) OPENWRT_SOURCECODE="github.com/immortalwrt/immortalwrt" ;;
             *) OPENWRT_SOURCECODE="unknown" ;;
             esac
-
-            # Complete filename
-            [[ "${source_codename:0:1}" != "_" ]] && source_codename="_${source_codename}"
         }
         echo -e "${INFO} The source_codename: [ ${source_codename} ], OpenWrt source code repository: [ ${OPENWRT_SOURCECODE} ]"
     }
@@ -681,7 +678,7 @@ make_image() {
 
     # Set OpenWrt filename
     [[ -d "${out_path}" ]] || mkdir -p ${out_path}
-    openwrt_filename="openwrt${source_codename}_${PLATFORM}_${board}_k${kernel}_$(date +"%Y.%m.%d").img"
+    openwrt_filename="${source_codename,,}_${PLATFORM}_${board}_k${kernel}_$(date +"%Y.%m.%d").img"
     build_image_file="${out_path}/${openwrt_filename}"
     rm -f ${build_image_file}
 
