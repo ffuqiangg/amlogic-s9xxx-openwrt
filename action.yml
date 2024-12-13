@@ -38,6 +38,10 @@ inputs:
     description: "Set OpenWrt builder signature."
     required: false
     default: ""
+  build_date:
+    description: "Firmware compile date"
+    required: false
+    default: ""
 
 runs:
   using: "composite"
