@@ -51,6 +51,7 @@ runs:
         cd ${GITHUB_ACTION_PATH}
         echo -e "ophub package actions path: [ ${PWD} ]"
 
+        export build_date="${{ inputs.build_date }}"
         openwrt_filename="${{ inputs.openwrt_path }}"
         openwrt_savefile="${openwrt_filename##*/}"
         openwrt_savepath="openwrt-armvirt"
