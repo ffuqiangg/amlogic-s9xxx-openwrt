@@ -678,7 +678,7 @@ make_image() {
 
     # Set OpenWrt filename
     [[ -d "${out_path}" ]] || mkdir -p ${out_path}
-    openwrt_filename="${source_codename,,}_${PLATFORM}_${board}_k${kernel}_$(date +"%Y.%m.%d").img"
+    openwrt_filename="${source_codename,,}_${PLATFORM}_${board}_k${kernel}_${build_date}.img"
     build_image_file="${out_path}/${openwrt_filename}"
     rm -f ${build_image_file}
 
