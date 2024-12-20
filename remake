@@ -928,17 +928,13 @@ refactor_rootfs() {
     # Set the keyword for tags in Releases
     [[ -n "${source_codename}" ]] && {
         sed -i "s|option amlogic_firmware_tag.*|option amlogic_firmware_tag '${source_codename}'|g" etc/config/amlogic
+        sed -i "s|option amlogic_shared_fstype.*|option amlogic_shared_fstype 'ext4'|g" etc/config/amlogic
     }
 
     # Modify the default script to [ bash ] for [ cpustat ]
     [[ -x "bin/bash" ]] && {
         sed -i "s/\/bin\/ash/\/bin\/bash/" etc/passwd
         sed -i "s/\/bin\/ash/\/bin\/bash/" usr/libexec/login.sh
-    }
-
-    # Edit amlogic config
-    [[ -f "etc/config/amlogic" ]] && {
-        sed -i "s/btrfs/ext4/" etc/config/amlogic
     }
 
     # Turn off hw_flow by default
