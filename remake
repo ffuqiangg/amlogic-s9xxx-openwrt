@@ -465,6 +465,7 @@ download_depends() {
     sed -i -e '/ROOT1=/c\ROOT1=\"720\"' -e '/ROOT2=/c\ROOT2=\"720\"' ${common_files}/usr/sbin/openwrt-install-amlogic
     sed -i '/bin\/AdGuardHome/d;/S99dockerd/d' ${common_files}/usr/sbin/openwrt-install-amlogic
     sed -i 's| /mnt/${EMMC_NAME}p4/AdGuardHome/data||' ${common_files}/usr/sbin/openwrt-install-amlogic
+    sed -i '/daemon/,+16d' ${common_files}/usr/sbin/openwrt-install-amlogic
 
     # Delete temporary files
     rm -rf ${git_path}
