@@ -937,8 +937,11 @@ refactor_rootfs() {
     # Set the keyword for tags in Releases
     [[ -n "${source_codename}" ]] && {
         sed -i "s|option amlogic_firmware_tag.*|option amlogic_firmware_tag '${source_codename}'|g" etc/config/amlogic
-        sed -i "s|option amlogic_shared_fstype.*|option amlogic_shared_fstype 'ext4'|g" etc/config/amlogic
     }
+
+    # Custom settings
+    sed -i "s|option amlogic_shared_fstype.*|option amlogic_shared_fstype 'ext4'|g" etc/config/amlogic
+    rm -f etc/rc.d/*dockerd
 
     # Modify the default script to [ bash ] for [ cpustat ]
     [[ -x "bin/bash" ]] && {
