@@ -940,7 +940,7 @@ refactor_rootfs() {
 
     # Custom settings
     sed -i "s|option amlogic_shared_fstype.*|option amlogic_shared_fstype 'ext4'|g" etc/config/amlogic
-    rm -f etc/rc.d/*dockerd
+    rm -f etc/rc.d/S??dockerd
 
     # Modify the default script to [ bash ] for [ cpustat ]
     [[ -x "bin/bash" ]] && {
