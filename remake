@@ -957,7 +957,7 @@ refactor_rootfs() {
         sed -i '/^exit 0/i\bash /etc/custom_service/start_service.sh' etc/rc.local
     }
     sed -i '/exit 0/d' etc/rc.local
-    echo -e "/etc/init.d/dockerd disable && /etc/init.d/dockerd stop && sed -i '/dockerd/d' /etc/rc.local\nexit 0" >> etc/rc.local
+    echo -e "/etc/init.d/dockerd disable && /etc/init.d/dockerd stop && sed -i '/dockerd/d' \$0\nexit 0" >> etc/rc.local
 
     # Modify the cpu mode to schedutil
     [[ -f "etc/config/cpufreq" ]] && sed -i "s/ondemand/schedutil/" etc/config/cpufreq
