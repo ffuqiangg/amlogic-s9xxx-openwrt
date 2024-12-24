@@ -179,7 +179,7 @@ init_var() {
     echo -e "${STEPS} Start Initializing Variables..."
 
     # If it is followed by [ : ], it means that the option requires a parameter value
-    get_all_ver="$(getopt "b:r:u:k:a:s:n:" "${@}")"
+    get_all_ver="$(getopt "b:r:u:k:a:s:n:d:" "${@}")"
 
     while [[ -n "${1}" ]]; do
         case "${1}" in
