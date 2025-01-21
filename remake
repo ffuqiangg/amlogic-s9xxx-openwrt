@@ -179,7 +179,7 @@ init_var() {
     echo -e "${STEPS} Start Initializing Variables..."
 
     # If it is followed by [ : ], it means that the option requires a parameter value
-    get_all_ver="$(getopt "b:r:u:k:a:s:n:" "${@}")"
+    get_all_ver="$(getopt "b:r:u:k:a:s:n:d:" "${@}")"
 
     while [[ -n "${1}" ]]; do
         case "${1}" in
@@ -240,6 +240,14 @@ init_var() {
         -n | --BuilderName)
             if [[ -n "${2}" ]]; then
                 builder_name="${2// /}"
+                shift
+            else
+                error_msg "Invalid -n parameter [ ${2} ]!"
+            fi
+            ;;
+        -d | --BuildData)
+            if [[ -n "${2}" ]]; then
+                build_date="${2}"
                 shift
             else
                 error_msg "Invalid -n parameter [ ${2} ]!"
@@ -372,18 +380,15 @@ find_openwrt() {
     (cd ${temp_dir} && tar -mxzf "${openwrt_path}/${openwrt_default_file}" "./${source_release_file}" 2>/dev/null)
     # Find custom DISTRIB_SOURCECODE, such as [ official/lede ]
     [[ -f "${temp_dir}/${source_release_file}" ]] && {
-        source_codename="$(cat ${temp_dir}/${source_release_file} 2>/dev/null | grep -oE "^DISTRIB_SOURCECODE=.*" | head -n 1 | cut -d"'" -f2)"
+        source_codename="$(cat ${temp_dir}/${source_release_file} 2>/dev/null | grep -oE "^DISTRIB_ID=.*" | head -n 1 | cut -d"'" -f2)"
         [[ -n "${source_codename}" ]] && {
             # Record OpenWrt source codes repository
-            case "${source_codename}" in
-            official) OPENWRT_SOURCECODE="github.com/openwrt/openwrt" ;;
+            case "${source_codename,,}" in
+            openwrt) OPENWRT_SOURCECODE="github.com/openwrt/openwrt" ;;
             lede) OPENWRT_SOURCECODE="github.com/coolsnowwolf/lede" ;;
             immortalwrt) OPENWRT_SOURCECODE="github.com/immortalwrt/immortalwrt" ;;
             *) OPENWRT_SOURCECODE="unknown" ;;
             esac
-
-            # Complete filename
-            [[ "${source_codename:0:1}" != "_" ]] && source_codename="_${source_codename}"
         }
         echo -e "${INFO} The source_codename: [ ${source_codename} ], OpenWrt source code repository: [ ${OPENWRT_SOURCECODE} ]"
     }
@@ -463,6 +468,12 @@ download_depends() {
     cp -af --no-preserve=ownership ${git_path}/luci-app-amlogic/root/usr/share/amlogic ${common_files}/usr/share/amlogic
     [[ "${?}" -eq 0 ]] && echo -e "${INFO} app/share download completed." || error_msg "app/share download failed."
     chmod +x ${common_files}/usr/share/amlogic/*
+
+    # Modify install script
+    sed -i -e '/ROOT1=/c\ROOT1=\"720\"' -e '/ROOT2=/c\ROOT2=\"720\"' ${common_files}/usr/sbin/openwrt-install-amlogic
+    sed -i '/bin\/AdGuardHome/d;/S99dockerd/d' ${common_files}/usr/sbin/openwrt-install-amlogic
+    sed -i 's| /mnt/${EMMC_NAME}p4/AdGuardHome/data||' ${common_files}/usr/sbin/openwrt-install-amlogic
+
     # Delete temporary files
     rm -rf ${git_path}
 }
@@ -490,6 +501,10 @@ query_kernel() {
                         ${kernel_api}/releases/expanded_assets/kernel_${key} |
                         grep -oE "${kernel_verpatch}.[0-9]+.tar.gz" | sed 's/.tar.gz//' |
                         sort -urV | head -n 1
+                )"
+                [[ ${kernel_repo} == *ffuqiangg* ]] && latest_version="$(
+                    curl -fsSL ${kernel_api}/releases | grep -oE "kernel_${kernel_verpatch}.[0-9]+" |
+                        sed 's/kernel_//' | sort -urV | head -n 1
                 )"
 
                 if [[ "${?}" -eq 0 && -n "${latest_version}" ]]; then
@@ -540,6 +555,7 @@ download_kernel() {
             for kernel_var in "${down_kernel_list[@]}"; do
                 if [[ ! -d "${kernel_path}/${key}/${kernel_var}" ]]; then
                     kernel_down_from="https://github.com/${kernel_repo}/releases/download/kernel_${key}/${kernel_var}.tar.gz"
+                    [[ "${kernel_repo}" == *ffuqiangg* ]] && kernel_down_from="https://github.com/${kernel_repo}/releases/download/kernel_${kernel_var}/${kernel_var}.tar.gz"
                     echo -e "${INFO} (${x}.${i}) [ ${key} - ${kernel_var} ] Kernel download from [ ${kernel_down_from} ]"
 
                     # Download the kernel files. If the download fails, try again 10 times.
@@ -670,7 +686,7 @@ make_image() {
 
     # Set OpenWrt filename
     [[ -d "${out_path}" ]] || mkdir -p ${out_path}
-    openwrt_filename="openwrt${source_codename}_${PLATFORM}_${board}_k${kernel}_$(date +"%Y.%m.%d").img"
+    openwrt_filename="${source_codename,,}_${PLATFORM}_${board}_k${kernel}_${build_date}.img"
     build_image_file="${out_path}/${openwrt_filename}"
     rm -f ${build_image_file}
 
@@ -783,7 +799,7 @@ extract_openwrt() {
     rm -f ${tag_rootfs}/rom/sbin/firstboot
 
     # Copy the common files
-    [[ -d "${common_files}" ]] && cp -af --no-preserve=ownership ${common_files}/* ${tag_rootfs}
+    [[ -d "${common_files}" ]] && rsync -aq --exclude="*banner" --exclude="*profile.d/" ${common_files}/ ${tag_rootfs}
 
     # Copy the platform files
     platform_bootfs="${platform_files}/${PLATFORM}/bootfs"
@@ -921,6 +937,7 @@ refactor_rootfs() {
     [[ -n "${source_codename}" ]] && {
         sed -i "s|option amlogic_firmware_tag.*|option amlogic_firmware_tag '${source_codename}'|g" etc/config/amlogic
     }
+    sed -i "s|option amlogic_shared_fstype.*|option amlogic_shared_fstype 'ext4'|g" etc/config/amlogic
 
     # Modify the default script to [ bash ] for [ cpustat ]
     [[ -x "bin/bash" ]] && {
@@ -939,6 +956,8 @@ refactor_rootfs() {
     [[ -x "${custom_startup_script}" && -f "etc/rc.local" ]] && {
         sed -i '/^exit 0/i\bash /etc/custom_service/start_service.sh' etc/rc.local
     }
+    sed -i '/exit 0/d' etc/rc.local
+    echo -e "/etc/init.d/dockerd disable && /etc/init.d/dockerd stop && sed -i '/dockerd/d' /etc/rc.local\nexit 0" >> etc/rc.local
 
     # Modify the cpu mode to schedutil
     [[ -f "etc/config/cpufreq" ]] && sed -i "s/ondemand/schedutil/" etc/config/cpufreq
@@ -1072,13 +1091,6 @@ EOF
 
     # Add firmware version information to the terminal page
     [[ -n "${builder_name}" ]] && builder_display="Builder Name: ${builder_name} | " || builder_display=""
-    [[ -f "etc/banner" ]] && {
-        echo " Install OpenWrt: System → Amlogic Service → Install OpenWrt" >>etc/banner
-        echo " Update  OpenWrt: System → Amlogic Service → Online  Update" >>etc/banner
-        echo " Board: ${board} | OpenWrt Kernel: ${kernel_name}" >>etc/banner
-        echo " ${builder_display}Production Date: $(date +%Y-%m-%d)" >>etc/banner
-        echo "───────────────────────────────────────────────────────────────────────" >>etc/banner
-    }
 
     # Add firmware information
     echo "PLATFORM='${PLATFORM}'" >>${op_release}
