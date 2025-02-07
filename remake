@@ -480,7 +480,7 @@ download_depends() {
     chmod +x ${common_files}/usr/share/amlogic/*
 
     # Modify install script
-    sed -i -e '/ROOT1=/c\ROOT1=\"720\"' -e '/ROOT2=/c\ROOT2=\"720\"' ${common_files}/usr/sbin/openwrt-install-amlogic
+    sed -i -e '/ROOT1=/c\ROOT1=\"820\"' -e '/ROOT2=/c\ROOT2=\"820\"' ${common_files}/usr/sbin/openwrt-install-amlogic
     sed -i '/bin\/AdGuardHome/d;/S99dockerd/d' ${common_files}/usr/sbin/openwrt-install-amlogic
     sed -i 's| /mnt/${EMMC_NAME}p4/AdGuardHome/data||' ${common_files}/usr/sbin/openwrt-install-amlogic
 
