@@ -38,6 +38,10 @@ inputs:
     description: "Set OpenWrt builder signature."
     required: false
     default: ""
+  build_date:
+    description: "Firmware compile date"
+    required: false
+    default: ""
 
 runs:
   using: "composite"
@@ -80,6 +84,7 @@ runs:
         [[ -n "${{ inputs.auto_kernel }}" ]] && make_command="${make_command} -a ${{ inputs.auto_kernel }}"
         [[ -n "${{ inputs.openwrt_size }}" ]] && make_command="${make_command} -s ${{ inputs.openwrt_size }}"
         [[ -n "${{ inputs.builder_name }}" ]] && make_command="${make_command} -n ${{ inputs.builder_name }}"
+        [[ -n "${{ inputs.build_date }}" ]] && make_command="${make_command} -d ${{ inputs.build_date }}"
         sudo ./remake ${make_command}
 
         cd ${{ github.action_path }}/${openwrt_outpath}
