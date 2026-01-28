@@ -109,7 +109,7 @@ runs:
         [[ -n "${{ inputs.openwrt_ip }}" ]] && make_command="${make_command} -p ${{ inputs.openwrt_ip }}"
         [[ -n "${{ inputs.openwrt_size }}" ]] && make_command="${make_command} -s ${{ inputs.openwrt_size }}"
         [[ -n "${{ inputs.builder_name }}" ]] && make_command="${make_command} -n ${{ inputs.builder_name }}"
-        [[ -n "${{ inputs.build_date }}" ]] && make_command="${make_command} -n ${{ inputs.build_date }}"
+        [[ -n "${{ inputs.build_date }}" ]] && make_command="${make_command} -d ${{ inputs.build_date }}"
         read -r -a make_args <<< "${make_command}"
         sudo ./remake "${make_args[@]}"
 
