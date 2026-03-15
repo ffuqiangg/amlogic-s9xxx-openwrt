@@ -46,6 +46,10 @@ inputs:
     description: "Set OpenWrt builder signature."
     required: false
     default: ""
+  build_date:
+    description: "Build date"
+    required: true
+    default: ""
 
 runs:
   using: "composite"
@@ -84,7 +88,7 @@ runs:
 
         # Apply custom OpenWrt files
         if [[ -n "${{ inputs.openwrt_files }}" && "${{ inputs.openwrt_files }}" != "false" ]]; then
-            echo -e "Applying custom OpenWrt files..."
+            echo -e "Add my custom OpenWrt remake files..."
             copy_from_path="${{ inputs.openwrt_files }}"
             copy_from_path="${copy_from_path%/}"
             [[ "${copy_from_path}" != /* ]] && copy_from_path="${{ github.workspace }}/${copy_from_path}"
@@ -105,6 +109,7 @@ runs:
         [[ -n "${{ inputs.openwrt_ip }}" ]] && make_command="${make_command} -p ${{ inputs.openwrt_ip }}"
         [[ -n "${{ inputs.openwrt_size }}" ]] && make_command="${make_command} -s ${{ inputs.openwrt_size }}"
         [[ -n "${{ inputs.builder_name }}" ]] && make_command="${make_command} -n ${{ inputs.builder_name }}"
+        [[ -n "${{ inputs.build_date }}" ]] && make_command="${make_command} -d ${{ inputs.build_date }}"
         read -r -a make_args <<< "${make_command}"
         sudo ./remake "${make_args[@]}"
 
