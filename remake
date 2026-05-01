@@ -103,7 +103,7 @@ auto_kernel="true"
 # Initialize the kernel tags array
 declare -A tags_list
 
-# Set the Amlogic u-boot series (u-boot-xxx.bin)
+# Set the Amlogic u-boot series(u-boot-xxx.bin)
 uboot_meson_gxl=("p201.bin" "p212.bin" "s905x-s912.bin" "n1.bin" "r3300l.bin")
 uboot_meson_gxm=("p212.bin" "s905x-s912.bin" "zyxq.bin")
 uboot_meson_g12a=("x96max.bin" "e900v22c.bin")
@@ -115,7 +115,7 @@ uboot_meson_gxbb=("p201.bin" "s905.bin")
 openwrt_ip="192.168.1.1"
 ip_regex="^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
 
-# Initialize the target build device list
+# Initialize the target  build device list
 make_board="all"
 # Set OpenWrt firmware size (Unit: MiB, boot_mb >= 256, root_mb >= 1024)
 boot_mb="384"
@@ -188,10 +188,10 @@ get_textoffset() {
 }
 
 init_var() {
-    echo -e "${STEPS} Initializing build variables..."
+      echo -e "${STEPS} Initializing build variables..."
 
     # If it is followed by [ : ], it means that the option requires a parameter value
-    local options="b:r:u:k:a:p:s:n:"
+    local options="b:r:u:k:a:p:s:n:d:"
     parsed_args=$(getopt -o "${options}" -- "${@}")
     [[ ${?} -ne 0 ]] && error_msg "Parameter parsing failed."
     eval set -- "${parsed_args}"
@@ -263,6 +263,14 @@ init_var() {
         -n | --BuilderName)
             if [[ -n "${2}" ]]; then
                 builder_name="${2// /}"
+                shift 2
+            else
+                error_msg "Invalid -n parameter [ ${2} ]!"
+            fi
+            ;;
+        -d | --BuildDate)
+            if [[ -n "${2}" ]]; then
+                build_date="${2}"
                 shift 2
             else
                 error_msg "Invalid -n parameter [ ${2} ]!"
@@ -456,9 +464,9 @@ find_openwrt() {
         # e.g. DISTRIB_SOURCEREPO='github.com/openwrt/openwrt'
         source_repo="${DISTRIB_SOURCEREPO:-""}"
         # e.g. DISTRIB_SOURCECODE='openwrt'
-        source_codename="${DISTRIB_SOURCECODE:-""}"
+        source_codename="${DISTRIB_ID:-""}"
         # e.g. DISTRIB_SOURCEBRANCH='openwrt-24.10'
-        source_branch="${DISTRIB_SOURCEBRANCH:-""}"
+        source_branch="${DISTRIB_DESCRIPTION:-""}"
 
         # Print the source information
         echo -e "${INFO} The source codename: [ ${source_codename} ], source branch: [ ${source_branch} ], source repository: [ ${source_repo} ]."
@@ -487,7 +495,7 @@ git_pull_dir() {
         fi
         sleep 60
     done
-    [[ "${clone_ok}" -eq 1 ]] || error_msg "Failed to clone the [ ${git_repo} ] repository."
+    [[ "${clone_ok}" -eq 0 ]] || error_msg "Failed to clone the [ ${git_repo} ] repository."
 }
 
 download_depends() {
@@ -583,12 +591,12 @@ query_kernel() {
                 kernel_verpatch="$(echo ${kernel_var} | awk -F '.' '{print $1"."$2}')"
 
                 # Query the latest kernel version
-                latest_version="$(
-                    curl -fsSL \
-                        ${kernel_api}/releases/expanded_assets/kernel_${key} |
-                        grep -oP "${kernel_verpatch}\.[0-9]+(?=\.tar\.gz)" |
-                        sort -urV | head -n 1
-                )"
+                if [[ "${kernel_repo}" == *ffuqiangg* ]]; then
+                    latest_version="$(curl -fsSL ${kernel_api}/releases | grep -oE "${kernel_verpatch}\.[0-9]+" | sort -urV | head -n 1)"
+                else
+                    latest_version="$(curl -fsSL ${kernel_api}/releases/expanded_assets/kernel_${key} |
+                        grep -oE "${kernel_verpatch}\.[0-9]+(?=\.tar\.gz)" | sort -urV | head -n 1)"
+                fi
 
                 if [[ -n "${latest_version}" ]]; then
                     tmp_arr_kernels[${i}]="${latest_version}"
@@ -637,7 +645,11 @@ download_kernel() {
             i="1"
             for kernel_var in "${down_kernel_list[@]}"; do
                 if [[ ! -d "${kernel_path}/${key}/${kernel_var}" ]]; then
-                    kernel_down_from="https://github.com/${kernel_repo}/releases/download/kernel_${key}/${kernel_var}.tar.gz"
+                    if [[ "${kernel_repo}" == *ffuqiangg* ]]; then
+                        kernel_down_from="https://github.com/${kernel_repo}/releases/download/kernel_${kernel_var}/${kernel_var}.tar.gz"
+                    else
+                        kernel_down_from="https://github.com/${kernel_repo}/releases/download/kernel_${key}/${kernel_var}.tar.gz"
+                    fi
                     echo -e "${INFO} (${x}.${i}) [ ${key} - ${kernel_var} ] Downloading kernel from [ ${kernel_down_from} ]"
 
                     # Download the kernel files. Retry up to 10 times with 60-second intervals on failure.
@@ -780,17 +792,14 @@ make_image() {
     adjust_kernel_files="no"
     # Check the personalized settings for this board
     board_release="${different_files}/${board}/rootfs/${board_release_file}"
-    [[ -f "${board_release}" ]] && source "${board_release}"
+    [[ -f "${board_release}" ]] && source ${board_release}
 
     # echo -e "${INFO} The [ ${board} ] OpenWrt image partition status: [ skip:${skip_mb} / boot:${boot_mb} / rootfs:${root_mb} ] MiB."
 
     # Check output directory
     [[ -d "${out_path}" ]] || mkdir -p "${out_path}"
-    # Add the source codename to the OpenWrt filename
-    [[ "${source_codename}" == "openwrt" ]] && openwrt_alias="official" || openwrt_alias="${source_codename}"
-    [[ -n "${openwrt_alias}" ]] && openwrt_alias+="_" || openwrt_alias=""
     # Set OpenWrt image filename
-    openwrt_filename="openwrt_${openwrt_alias}${PLATFORM}_${board}_k${kernel}_$(date +"%Y.%m.%d").img"
+    openwrt_filename="${source_codename}_${PLATFORM}_${board}_k${kernel}_${build_date}.img"
     build_image_file="${out_path}/${openwrt_filename}"
     rm -f "${build_image_file}"
 
@@ -925,7 +934,7 @@ extract_openwrt() {
 
     # Copy the bootloader files
     [[ -d "${tag_rootfs}/lib/u-boot" ]] || mkdir -p "${tag_rootfs}/lib/u-boot"
-    [[ -n "${tag_rootfs}" && -d "${tag_rootfs}/lib/u-boot" ]] && rm -rf "${tag_rootfs}/lib/u-boot"/*
+        [[ -n "${tag_rootfs}" && -d "${tag_rootfs}/lib/u-boot" ]] && rm -rf "${tag_rootfs}/lib/u-boot"/*
     [[ -d "${bootloader_path}" ]] && cp -af --no-preserve=ownership "${bootloader_path}/." "${tag_rootfs}/lib/u-boot"
 
     # Copy the Amlogic overload files
@@ -1217,16 +1226,6 @@ EOF
         # ct2000 s922x is brm4359
         sed -i "s/macaddr=.*/macaddr=${random_macaddr}:07/" "brcmfmac4359-sdio.ali,ct2000.txt"
     )
-
-    # Add firmware version information to the terminal banner
-    [[ -n "${builder_name}" ]] && builder_display="Builder Name: ${builder_name} | " || builder_display=""
-    [[ -f "etc/banner" ]] && {
-        echo " Install OpenWrt: System → Amlogic Service → Install OpenWrt" >>etc/banner
-        echo " Update  OpenWrt: System → Amlogic Service → Online  Update" >>etc/banner
-        echo " Board: ${board} | OpenWrt Kernel: ${kernel_name}" >>etc/banner
-        echo " ${builder_display}Production Date: $(date +%Y-%m-%d)" >>etc/banner
-        echo "───────────────────────────────────────────────────────────────────────" >>etc/banner
-    }
 
     # Add firmware information
     release_lines=(

@@ -46,6 +46,10 @@ inputs:
     description: "Set OpenWrt builder signature."
     required: false
     default: ""
+  build_date:
+    description: "Build date"
+    required: true
+    default: ""
 
 runs:
   using: "composite"
@@ -84,7 +88,7 @@ runs:
 
         # Apply custom OpenWrt files
         if [[ -n "${{ inputs.openwrt_files }}" && "${{ inputs.openwrt_files }}" != "false" ]]; then
-            echo -e "Applying custom OpenWrt files..."
+            echo -e "Add my custom OpenWrt remake files..."
             copy_from_path="${{ inputs.openwrt_files }}"
             copy_from_path="${copy_from_path%/}"
             [[ "${copy_from_path}" != /* ]] && copy_from_path="${{ github.workspace }}/${copy_from_path}"
@@ -103,14 +107,15 @@ runs:
         cd ${{ github.action_path }}
         echo -e "Starting OpenWrt build process..."
         make_args=()
-        [[ -n "${{ inputs.openwrt_board }}"  ]] && make_args+=(-b "${{ inputs.openwrt_board }}")
-        [[ -n "${{ inputs.kernel_repo }}"    ]] && make_args+=(-r "${{ inputs.kernel_repo }}")
-        [[ -n "${{ inputs.kernel_usage }}"   ]] && make_args+=(-u "${{ inputs.kernel_usage }}")
+        [[ -n "${{ inputs.openwrt_board }}" ]] && make_args+=(-b "${{ inputs.openwrt_board }}")
+        [[ -n "${{ inputs.kernel_repo }}" ]] && make_args+=(-r "${{ inputs.kernel_repo }}")
+        [[ -n "${{ inputs.kernel_usage }}" ]] && make_args+=(-u "${{ inputs.kernel_usage }}")
         [[ -n "${{ inputs.openwrt_kernel }}" ]] && make_args+=(-k "${{ inputs.openwrt_kernel }}")
-        [[ -n "${{ inputs.auto_kernel }}"    ]] && make_args+=(-a "${{ inputs.auto_kernel }}")
-        [[ -n "${{ inputs.openwrt_ip }}"     ]] && make_args+=(-p "${{ inputs.openwrt_ip }}")
-        [[ -n "${{ inputs.openwrt_size }}"   ]] && make_args+=(-s "${{ inputs.openwrt_size }}")
-        [[ -n "${builder_name}"              ]] && make_args+=(-n "${builder_name}")
+        [[ -n "${{ inputs.auto_kernel }}" ]] && make_args+=(-a "${{ inputs.auto_kernel }}")
+        [[ -n "${{ inputs.openwrt_ip }}" ]] && make_args+=(-p "${{ inputs.openwrt_ip }}")
+        [[ -n "${{ inputs.openwrt_size }}" ]] && make_args+=(-s "${{ inputs.openwrt_size }}")
+        [[ -n "${builder_name}" ]] && make_args+=(-n "${builder_name}")
+        [[ -n "${build_date}" ]] && make_args+=(-d "${{ inputs.build_date }}")
         sudo ./remake "${make_args[@]}"
 
         cd ${{ github.action_path }}
