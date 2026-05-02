@@ -919,6 +919,7 @@ extract_openwrt() {
 
     # Copy the common files
     [[ -d "${common_files}" ]] && cp -af --no-preserve=ownership "${common_files}/." "${tag_rootfs}"
+    rm -rf "${tag_rootfs}/etc/profile.d"
 
     # Copy the platform files
     platform_bootfs="${platform_files}/${PLATFORM}/bootfs"
