@@ -88,7 +88,7 @@ runs:
 
         # Apply custom OpenWrt files
         if [[ -n "${{ inputs.openwrt_files }}" && "${{ inputs.openwrt_files }}" != "false" ]]; then
-            echo -e "Add my custom OpenWrt remake files..."
+            echo -e "Applying custom OpenWrt files..."
             copy_from_path="${{ inputs.openwrt_files }}"
             copy_from_path="${copy_from_path%/}"
             [[ "${copy_from_path}" != /* ]] && copy_from_path="${{ github.workspace }}/${copy_from_path}"
