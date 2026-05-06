@@ -918,7 +918,7 @@ extract_openwrt() {
     rm -f "${tag_rootfs}/rom/sbin/firstboot"
 
     # Copy the common files
-    [[ -d "${common_files}" ]] && rm -rf "${common_files}/{etc/profile.d,etc/banner}" && \
+    [[ -d "${common_files}" ]] && rm -rf "${common_files}/etc/profile.d" "${common_files}/etc/banner" && \
     cp -af --no-preserve=ownership "${common_files}/." "${tag_rootfs}"
 
     # Copy the platform files
